@@ -1,0 +1,151 @@
+{
+  "name": "E-Commerce & 3PL Logistics Resilient Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-events",
+        "options": {}
+      },
+      "name": "Webhook Inbound",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sanitize and transform order payload\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const body = item.json.body || item.json;\n  results.push({\n    json: {\n      order_id: body.order_id || 'UNKNOWN',\n      platform: body.platform || 'tiktok_shop',\n      amount: Number(body.total_amount || 0),\n      tracking_code: body.tracking_code || '',\n      created_at: body.created_at || new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "Transform & Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://resilience-bridge:8000/api/sync/safe-write",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"spreadsheet_id\": \"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms\",\n  \"worksheet_name\": \"Daily_Orders\",\n  \"rows\": [\n    [\n      \"{{ $json.order_id }}\",\n      \"{{ $json.platform }}\",\n      {{ $json.amount }},\n      \"{{ $json.tracking_code }}\",\n      \"{{ $json.created_at }}\"\n    ]\n  ],\n  \"mode\": \"append\"\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Safe Batch Write to Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check Write Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=✅ [SYNC SUCCESS] Order #{{ $('Transform & Validate Payload').item.json.order_id }} ({{ $('Transform & Validate Payload').item.json.platform }}) synced safely to Google Sheets without rate-limit errors.",
+        "additionalFields": {}
+      },
+      "name": "Telegram Alert (Success)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=⚠️ [SYNC WARNING] Sync failed for Order #{{ $('Transform & Validate Payload').item.json.order_id }}. Reason: {{ $json.message || 'Unknown error' }}.",
+        "additionalFields": {}
+      },
+      "name": "Telegram Alert (Failure)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Inbound": {
+      "main": [
+        [
+          {
+            "node": "Transform & Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform & Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Safe Batch Write to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Safe Batch Write to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Check Write Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Write Status": {
+      "main": [
+        [
+          {
+            "node": "Telegram Alert (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Alert (Failure)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true
+}
