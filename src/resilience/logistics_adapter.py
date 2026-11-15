@@ -66,3 +66,4 @@ def get_tracking_status(
     response = _session.get(url, headers=headers, timeout=DEFAULT_TIMEOUT_SEC)
     response.raise_for_status()
     return response.json()
+

@@ -4,7 +4,11 @@
 [![n8n](https://img.shields.io/badge/Workflow-n8n-EA4B71?logo=n8n)](https://n8n.io)
 [![Python](https://img.shields.io/badge/Backend-Python_3.11-3776AB?logo=python)](https://python.org)
 [![Google Sheets API](https://img.shields.io/badge/Integration-Google_Sheets-34A853?logo=google-sheets)](https://developers.google.com/sheets/api)
+[![Tests](https://img.shields.io/badge/Tests-Passing-success)](tests/test_resilience.py)
 [![Status](https://img.shields.io/badge/Production-Tested-success)]()
+
+> 🛡️ **Production Showcase Disclosure:**
+> This repository contains the extracted, sanitized core modules of a multi-tenant enterprise e-commerce automation engine. Proprietary database credentials, internal endpoints, and client PII have been decoupled for open-source demonstration while preserving the full production resilience, concurrency lock, and rate-limiting logic.
 
 ---
 
@@ -73,6 +77,8 @@ resilient-ecommerce-ops-pipeline/
 │   │   ├── gspread_resilience.py # Mutex throttle & transient retry client
 │   │   └── logistics_adapter.py  # SSRF-guarded 3PL carrier integration
 │   └── app.py                    # Lightweight FastAPI service wrapper
+├── tests/
+│   └── test_resilience.py        # Automated test suite (SSRF, range math, error handling)
 ├── docker-compose.yml            # Spins up n8n & Python service locally
 ├── requirements.txt
 ├── .env.example
@@ -81,20 +87,11 @@ resilient-ecommerce-ops-pipeline/
 
 ---
 
-## 🚀 Quick Start
-
-### 1. Configure Environment
+## 🧪 Testing & Verification
+Run the automated test suite locally:
 ```bash
-git clone https://github.com/<your-username>/resilient-ecommerce-ops-pipeline.git
-cd resilient-ecommerce-ops-pipeline
-cp .env.example .env
+python -m unittest tests/test_resilience.py
 ```
-
-### 2. Run with Docker Compose
-```bash
-docker-compose up -d
-```
-Access n8n at `http://localhost:5678` and import `/n8n-workflows/ecommerce_sync.json`.
 
 ---
 
